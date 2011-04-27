@@ -27,8 +27,10 @@ int main(int argc, char** argv) {
     int ch;
     opterr = 0;
     char recordInfo[1200010];
+    char workingDir[1024];
+    strcpy(workingDir, "./");
     bool fileMode = false;
-    while((ch = getopt(argc, argv, "k:f:")) != -1){
+    while((ch = getopt(argc, argv, "k:f:s:")) != -1){
         switch (ch){
             case 'k':
                 strcpy(recordInfo, optarg);
@@ -37,6 +39,9 @@ int main(int argc, char** argv) {
                 fileMode = true;
                 strcpy(recordInfo, optarg);
                 break;
+            case 's':
+		strcpy(workingDir, optarg);
+		break;
             default:
 		std::cout << "-k \"xxxxxxxxxxx,yyyyyyyyyyy...\" OR -f \"file name. each video id should with delimiter '\\n'\"" << std::endl;
 		return 0;
@@ -72,6 +77,10 @@ int main(int argc, char** argv) {
     if(vidSet->size() == 0){
         std::cout << "no video id found." << std::endl;
         return 0;
+    }
+    if(chdir(workingDir) != 0){
+	std::cout << "changing working dir" << optarg << " fail." << std::endl;
+	return 0;
     }
     unsigned int perThreadHandleVids = vidSet->size() / threadNum;
     if(perThreadHandleVids == 0){

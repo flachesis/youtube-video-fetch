@@ -1,7 +1,7 @@
 使用方式:
-1. ./yvideofetch -k "xxxxxxxxxxx,yyyyyyyyyyy,zzzzzzzzzzz"
+1. ./yvideofetch -k "xxxxxxxxxxx,yyyyyyyyyyy,zzzzzzzzzzz" [-s workingDIR]
 xxxxxxxxxxx,yyyyyyyyyyy and zzzzzzzzzzz is youtube video id.
-2. ./yvideofetch -f "file name"
+2. ./yvideofetch -f "file name" [-s workingDIR]
 
 file format:
 xxxxxxxxxxx
