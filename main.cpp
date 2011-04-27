@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
         return 0;
     }
     if(chdir(workingDir) != 0){
-	std::cout << "changing working dir" << optarg << " fail." << std::endl;
+	std::cout << "changing working dir" << workingDir << " fail." << std::endl;
 	return 0;
     }
     unsigned int perThreadHandleVids = vidSet->size() / threadNum;
