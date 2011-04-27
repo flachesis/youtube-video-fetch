@@ -10,5 +10,5 @@ zzzzzzzzzzz
 
 Requirements:
 Poco c++ lib.
-libcrl.
+libcurl.
 gnu c++ compiler OR MINGW compiler.
