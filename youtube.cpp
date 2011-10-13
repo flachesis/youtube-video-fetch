@@ -11,6 +11,12 @@
 #include <unistd.h>
 #include <curl/curl.h>
 
+#ifdef __MINGW32__ // MINGW
+#define fopen(X,Y) fopen64(X,Y)
+#define ftello(X) ftello64(X)
+#define fseeko(X,Y,Z) fseeko64(X,Y,Z)
+#endif
+
 bool init();
 void uninit();
 std::set<std::string> processVideoFetch(std::string savePath, std::set<std::string> &vids);
