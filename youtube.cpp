@@ -138,7 +138,6 @@ std::set<std::string> processVideoFetch(std::string savePath, std::set<std::stri
 				it2->second.erase(it2->second.begin());
 			}else{
 				failGetVids.insert(*it);
-				remove(it->c_str());
 			}
 		}
 		unFinishVids = getVideoFile(savePath, processList);
@@ -202,6 +201,7 @@ std::set<std::string> getVideoFile(std::string &savePath, std::map<std::string, 
 	}
 	CURLM *mhandle = curl_multi_init();
 	if(mhandle == NULL){
+		curl_easy_cleanup(handle);
 		return unFinishVids;
 	}
 	CURLcode code;
@@ -215,12 +215,17 @@ std::set<std::string> getVideoFile(std::string &savePath, std::map<std::string, 
 	curl_easy_setopt(handle, CURLOPT_LOW_SPEED_TIME, 60);
 	std::map<std::string, CURL*> handleList;
 	std::map<std::string, FILE*> fileList;
+	std::map<std::string, std::string> fileNameList;
 	FILE *tmpFile = NULL;
 	std::string filePath;
 	for(std::map<std::string, std::string>::iterator it = result.begin(); it != result.end(); it++){
 		filePath = savePath + it->first + "." + getExtensionName(it->second);
 		tmpFile = fopen(filePath.c_str(), "wb");
+		if(tmpFile == NULL){
+			continue;
+		}
 		fileList.insert(std::pair<std::string, FILE*>(it->first, tmpFile));
+		fileNameList.insert(std::pair<std::string, std::string>(it->first, filePath));
 		curl_easy_setopt(handle, CURLOPT_WRITEDATA, tmpFile);
 		curl_easy_setopt(handle, CURLOPT_URL, it->second.c_str());
 		handleList.insert(std::pair<std::string, CURL*>(it->first, handle));
@@ -228,6 +233,10 @@ std::set<std::string> getVideoFile(std::string &savePath, std::map<std::string, 
 		handle = curl_easy_duphandle(handle);
 	}
 	curl_easy_cleanup(handle);
+	if(handleList.size() == 0){
+		curl_multi_cleanup(mhandle);
+		return unFinishVids;
+	}
 	int runningHandles = 0;
 	while(curl_multi_perform(mhandle, &runningHandles) == CURLM_CALL_MULTI_PERFORM){}
 	struct timeval timeout;
@@ -256,8 +265,11 @@ std::set<std::string> getVideoFile(std::string &savePath, std::map<std::string, 
 	for(std::map<std::string, FILE*>::iterator it = fileList.begin(); it != fileList.end(); it++){
 		if(ftello(it->second) == 0){
 			unFinishVids.insert(it->first);
+			fclose(it->second);
+			remove(fileNameList.find(it->first)->second.c_str());
+		}else{
+			fclose(it->second);
 		}
-		fclose(it->second);
 	}
 	return unFinishVids;
 }
