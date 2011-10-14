@@ -91,7 +91,7 @@ int main(int argc, char **argv){
 	std::set<std::string>::iterator it = vids.begin();
 	BDB::Config conf;
 	conf.root_dir = workingDir;
-	conf.min_size = 32;
+	conf.min_size = 52428800;
 	BDB::BehaviorDB ybdb(conf);
 	std::ofstream fout(logFile, std::ofstream::out | std::ofstream::app);
 	YoutubeCrawler yc(ybdb, fout);
@@ -106,6 +106,7 @@ int main(int argc, char **argv){
 			std::cerr << *it << " fetch fail." << std::endl;
 		}
 	}
+	fout.close();
 	//delete [] workingDir;
 	//delete [] logFile;
 	uninit();

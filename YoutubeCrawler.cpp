@@ -152,6 +152,7 @@ std::set<std::string> YoutubeCrawler::getVideoFile(std::map<std::string, std::st
 			ybdb.del(it->second.addr);
 		}else{
 			logRids << it->first << "\t" << it->second.addr << std::endl;
+			logRids.flush();
 		}
 	}
 	return unFinishVids;
