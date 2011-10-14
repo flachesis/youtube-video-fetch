@@ -1,123 +1,17 @@
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <string>
-#include <vector>
-#include <set>
-#include <map>
-#include <iostream>
+#include "YoutubeCrawler.h"
 #include <sstream>
-#include <fstream>
-#include <unistd.h>
-#include <curl/curl.h>
+#include <iostream>
 
-#ifdef __MINGW32__ // MINGW
-#define fopen(X,Y) fopen64(X,Y)
-#define ftello(X) ftello64(X)
-#define fseeko(X,Y,Z) fseeko64(X,Y,Z)
-#endif
-
-bool init();
-void uninit();
-std::set<std::string> processVideoFetch(std::string savePath, std::set<std::string> &vids);
-bool getVideoURI(std::set<std::string> &vids, std::map<std::string, std::vector<std::string> > &result);
-bool getMaxQualityURI(CURL *handle, std::string &content, std::vector<std::string> &results);
-std::set<std::string> getVideoFile(std::string &savePath, std::map<std::string, std::string> &result);
-std::string getExtensionName(std::string &url);
-size_t writeStringCallback(char *ptr, size_t size, size_t nmemb, void *userdata);
-size_t writeFileCallback(char *ptr, size_t size, size_t nmemb, void *userdata);
-
-int main(int argc, char **argv){
-	init();
-	std::set<std::string> vids;
-	int threadNum = 10;
-	char *vidsRaw = new char[1200010];
-	char *fileName = new char[4096];
-	char *workingDir = new char[4096];
-	vidsRaw[0] = '\0';
-	fileName[0] = '\0';
-	workingDir[0] = '\0';
-	int ch;
-	opterr = 0;
-	while((ch = getopt(argc, argv, "k:f:s:t:")) != -1){
-		switch (ch){
-			case 'k':
-				strcpy(vidsRaw, optarg);
-			break;
-			case 'f':
-				strcpy(fileName, optarg);
-			break;
-			case 's':
-				strcpy(workingDir, optarg);
-			break;
-			case 't':
-				threadNum = atoi(optarg);
-			break;
-			default:
-			{
-				std::cerr << "-k \"xxxxxxxxxxx,yyyyyyyyyyy...\"" << 
-				" OR -f \"file name. each video id should with delimiter '\\n'\"" << std::endl;
-				return 0;
-			}
-			break;
-		}
-	}
-	if(threadNum <= 0){
-		threadNum = 10;
-	}
-	size_t cstringLen = 0;
-	if((cstringLen = strlen(workingDir)) > 0){
-		if(workingDir[cstringLen - 1] != '/'){
-			workingDir[cstringLen] = '/';
-			workingDir[cstringLen + 1] = '\0';
-		}
-	}
-	char *pch = strtok(vidsRaw, ",");
-	while(pch != NULL){
-		if(strlen(pch) == 11){
-			vids.insert(pch);
-		}else{
-			std::cerr << pch << " is not valid video id." << std::endl;
-		}
-		pch = strtok(NULL, ",");
-	}
-	if(strlen(fileName) > 0){
-		FILE *fin = fopen(fileName, "r");
-		if(fin != NULL){
-			while(fgets(vidsRaw, 1200010, fin) != NULL){
-				pch = strtok(vidsRaw, "\r\n");
-				if(strlen(pch) == 11){
-					vids.insert(pch);
-				}else{
-					std::cerr << pch << " is not valid video id." << std::endl;
-				}
-			}
-		}
-	}
-	delete [] vidsRaw;
-	delete [] fileName;
-	std::set<std::string> vidsTmp;
-	int count = 0;
-	std::set<std::string> failGetVids;
-	std::set<std::string>::iterator it = vids.begin();
-	while(it != vids.end()){
-		count = 0;
-		for(; it != vids.end() && count < threadNum; it++){
-			vidsTmp.insert(*it);
-			count++;
-		}
-		failGetVids = processVideoFetch(workingDir, vidsTmp);
-		for(std::set<std::string>::iterator it = failGetVids.begin(); it != failGetVids.end(); it++){
-			std::cerr << *it << " fetch fail." << std::endl;
-		}
-	}
-	delete [] workingDir;
-	uninit();
-	return 0;
+YoutubeCrawler::YoutubeCrawler(BDB::BehaviorDB &bdb, std::ofstream &logHandle) : ybdb(bdb), logRids(logHandle){
+	
 }
 
-std::set<std::string> processVideoFetch(std::string savePath, std::set<std::string> &vids){
+YoutubeCrawler::~YoutubeCrawler(){
+	
+}
+
+std::set<std::string> YoutubeCrawler::processVideoFetch(std::set<std::string> &vids){
 	std::set<std::string> failGetVids;
 	std::map<std::string, std::vector<std::string> > result;
 	if(!getVideoURI(vids, result)){
@@ -128,12 +22,11 @@ std::set<std::string> processVideoFetch(std::string savePath, std::set<std::stri
 		processList.insert(std::pair<std::string, std::string>(it->first, *(it->second.begin())));
 		it->second.erase(it->second.begin());
 	}
-	std::set<std::string> unFinishVids = getVideoFile(savePath, processList);
+	std::set<std::string> unFinishVids = getVideoFile(processList);
 	std::map<std::string, std::vector<std::string> >::iterator it2;
 	while(unFinishVids.size() != 0){
 		processList.clear();
 		for(std::set<std::string>::iterator it = unFinishVids.begin(); it != unFinishVids.end(); it++){
-			std::cerr << *it << "start retry..." << std::endl;
 			it2 = result.find(*it);
 			if(it2 != result.end() && it2->second.size() > 0){
 				processList.insert(std::pair<std::string, std::string>(it2->first, *(it2->second.begin())));
@@ -142,24 +35,12 @@ std::set<std::string> processVideoFetch(std::string savePath, std::set<std::stri
 				failGetVids.insert(*it);
 			}
 		}
-		unFinishVids = getVideoFile(savePath, processList);
+		unFinishVids = getVideoFile(processList);
 	}
 	return failGetVids;
 }
 
-bool init(){
-	CURLcode code = curl_global_init(CURL_GLOBAL_ALL);
-	if(code != 0){
-		return false;
-	}
-	return true;
-}
-
-void uninit(){
-	curl_global_cleanup();
-}
-
-bool getVideoURI(std::set<std::string> &vids, std::map<std::string, std::vector<std::string> > &result){
+bool YoutubeCrawler::getVideoURI(std::set<std::string> &vids, std::map<std::string, std::vector<std::string> > &result){
 	CURL *handle = curl_easy_init();
 	if(handle == NULL){
 		return false;
@@ -192,7 +73,7 @@ bool getVideoURI(std::set<std::string> &vids, std::map<std::string, std::vector<
 	return true;
 }
 
-std::set<std::string> getVideoFile(std::string &savePath, std::map<std::string, std::string> &result){
+std::set<std::string> YoutubeCrawler::getVideoFile(std::map<std::string, std::string> &result){
 	std::set<std::string> unFinishVids;
 	if(result.size() == 0){
 		return unFinishVids;
@@ -216,19 +97,20 @@ std::set<std::string> getVideoFile(std::string &savePath, std::map<std::string, 
 	curl_easy_setopt(handle, CURLOPT_LOW_SPEED_LIMIT, 1);
 	curl_easy_setopt(handle, CURLOPT_LOW_SPEED_TIME, 60);
 	std::map<std::string, CURL*> handleList;
-	std::map<std::string, FILE*> fileList;
-	std::map<std::string, std::string> fileNameList;
-	FILE *tmpFile = NULL;
-	std::string filePath;
+	std::map<std::string, RecInfo> addrsList;
+	BDB::AddrType tmpAddr;
+	std::pair<std::map<std::string, RecInfo>::iterator, bool> addrIt;
+	RecInfo recInfo;
+	recInfo.ybdb = &ybdb;
 	for(std::map<std::string, std::string>::iterator it = result.begin(); it != result.end(); it++){
-		filePath = savePath + it->first + "." + getExtensionName(it->second);
-		tmpFile = fopen(filePath.c_str(), "wb");
-		if(tmpFile == NULL){
+		tmpAddr = ybdb.put("", 0);
+		if(tmpAddr == -1){
 			continue;
 		}
-		fileList.insert(std::pair<std::string, FILE*>(it->first, tmpFile));
-		fileNameList.insert(std::pair<std::string, std::string>(it->first, filePath));
-		curl_easy_setopt(handle, CURLOPT_WRITEDATA, tmpFile);
+		recInfo.addr = tmpAddr;
+		recInfo.size = 0;
+		addrIt = addrsList.insert(std::pair<std::string, RecInfo>(it->first, recInfo));
+		curl_easy_setopt(handle, CURLOPT_WRITEDATA, &(addrIt.first->second));
 		curl_easy_setopt(handle, CURLOPT_URL, it->second.c_str());
 		handleList.insert(std::pair<std::string, CURL*>(it->first, handle));
 		curl_multi_add_handle(mhandle, handle);
@@ -264,19 +146,18 @@ std::set<std::string> getVideoFile(std::string &savePath, std::map<std::string, 
 		curl_easy_cleanup(it->second);
 	}
 	curl_multi_cleanup(mhandle);
-	for(std::map<std::string, FILE*>::iterator it = fileList.begin(); it != fileList.end(); it++){
-		if(ftello(it->second) == 0){
+	for(std::map<std::string, RecInfo>::iterator it = addrsList.begin(); it != addrsList.end(); it++){
+		if(it->second.size == 0){
 			unFinishVids.insert(it->first);
-			fclose(it->second);
-			remove(fileNameList.find(it->first)->second.c_str());
+			ybdb.del(it->second.addr);
 		}else{
-			fclose(it->second);
+			logRids << it->first << "\t" << it->second.addr << std::endl;
 		}
 	}
 	return unFinishVids;
 }
 
-bool getMaxQualityURI(CURL *handle, std::string &content, std::vector<std::string> &results){
+bool YoutubeCrawler::getMaxQualityURI(CURL *handle, std::string &content, std::vector<std::string> &results){
 	size_t startPos = content.find("url_encoded_fmt_stream_map=");
 	if(startPos == std::string::npos){
 		return false;
@@ -314,7 +195,7 @@ bool getMaxQualityURI(CURL *handle, std::string &content, std::vector<std::strin
 	return true;
 }
 
-std::string getExtensionName(std::string &url){
+std::string YoutubeCrawler::getExtensionName(std::string &url){
 	size_t startPos = url.find("itag=");
 	if(startPos == std::string::npos){
 		return "xxx";
@@ -347,16 +228,17 @@ std::string getExtensionName(std::string &url){
 	return "xxx";
 }
 
-size_t writeStringCallback(char *ptr, size_t size, size_t nmemb, void *userdata){
+size_t YoutubeCrawler::writeStringCallback(char *ptr, size_t size, size_t nmemb, void *userdata){
 	size = size * nmemb;
 	std::string *data = (std::string*)userdata;
 	data->append(ptr, size);
 	return size;
 }
 
-size_t writeFileCallback(char *ptr, size_t size, size_t nmemb, void *userdata){
+size_t YoutubeCrawler::writeFileCallback(char *ptr, size_t size, size_t nmemb, void *userdata){
 	size = size * nmemb;
-	FILE *file = (FILE*)userdata;
-	fwrite(ptr, 1, size, file);
+	RecInfo *recInfo = (RecInfo*)userdata;
+	recInfo->ybdb->put(ptr, size, recInfo->addr);
+	recInfo->size += size;
 	return size;
 }
