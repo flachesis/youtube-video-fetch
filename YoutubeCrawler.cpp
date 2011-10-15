@@ -2,6 +2,7 @@
 #include "YoutubeCrawler.h"
 #include <sstream>
 #include <iostream>
+#include <iomanip>
 
 YoutubeCrawler::YoutubeCrawler(BDB::BehaviorDB &bdb, std::ofstream &logHandle) : ybdb(bdb), logRids(logHandle){
 	
@@ -146,12 +147,14 @@ std::set<std::string> YoutubeCrawler::getVideoFile(std::map<std::string, std::st
 		curl_easy_cleanup(it->second);
 	}
 	curl_multi_cleanup(mhandle);
+	std::map<std::string, std::string>::iterator uIt;
 	for(std::map<std::string, RecInfo>::iterator it = addrsList.begin(); it != addrsList.end(); it++){
 		if(it->second.size == 0){
 			unFinishVids.insert(it->first);
 			ybdb.del(it->second.addr);
 		}else{
-			logRids << it->first << "\t" << it->second.addr << std::endl;
+			uIt = result.find(it->first);
+			logRids << std::setw(11) << it->first << std::setfill('0') << std::setw(9) << std::hex << it->second.addr << getExtensionName(uIt->second) << std::endl;
 			logRids.flush();
 		}
 	}

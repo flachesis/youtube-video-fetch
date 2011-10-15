@@ -2,6 +2,7 @@
 #include "YoutubeCrawler.h"
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 #include <cstdlib>
 #include <unistd.h>
 
@@ -88,13 +89,30 @@ int main(int argc, char **argv){
 	std::set<std::string> vidsTmp;
 	int count = 0;
 	std::set<std::string> failGetVids;
-	std::set<std::string>::iterator it = vids.begin();
+	std::set<std::string>::iterator it;
+	{
+		std::ifstream fin(logFile, std::ifstream::in);
+		if(fin.is_open()){
+			std::string vid = "";
+			unsigned int addr = 0;
+			std::string ext = "";
+			while(!fin.eof()){
+				fin >> std::setw(11) >> vid >> std::setw(9) >> std::hex >> addr >> ext;
+				if((it = vids.find(vid)) != vids.end()){
+					vids.erase(it);
+				}
+			}
+			fin.close();
+		}
+	}
 	BDB::Config conf;
 	conf.root_dir = workingDir;
 	conf.min_size = 52428800;
 	BDB::BehaviorDB ybdb(conf);
 	std::ofstream fout(logFile, std::ofstream::out | std::ofstream::app);
+	delete [] logFile;
 	YoutubeCrawler yc(ybdb, fout);
+	it = vids.begin();
 	while(it != vids.end()){
 		count = 0;
 		for(; it != vids.end() && count < threadNum; it++){
@@ -108,7 +126,6 @@ int main(int argc, char **argv){
 	}
 	fout.close();
 	//delete [] workingDir;
-	//delete [] logFile;
 	uninit();
 	return 0;
 }
