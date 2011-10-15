@@ -1,5 +1,6 @@
 
 #include "YoutubeCrawler.h"
+#include "bdb/addr_iter.hpp"
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -90,25 +91,34 @@ int main(int argc, char **argv){
 	int count = 0;
 	std::set<std::string> failGetVids;
 	std::set<std::string>::iterator it;
+	BDB::Config conf;
+	conf.root_dir = workingDir;
+	conf.min_size = 52428800;
+	BDB::BehaviorDB ybdb(conf);
 	{
+		std::set<BDB::AddrType> inDBAddrList;
 		std::ifstream fin(logFile, std::ifstream::in);
 		if(fin.is_open()){
 			std::string vid = "";
-			unsigned int addr = 0;
+			BDB::AddrType addr = 0;
 			std::string ext = "";
 			while(!fin.eof()){
 				fin >> std::setw(11) >> vid >> std::setw(9) >> std::hex >> addr >> ext;
 				if((it = vids.find(vid)) != vids.end()){
 					vids.erase(it);
 				}
+				inDBAddrList.insert(addr);
 			}
 			fin.close();
 		}
+		BDB::AddrIterator begin = ybdb.begin();
+		while(begin != ybdb.end()){
+			if(inDBAddrList.find(*begin) == inDBAddrList.end()){
+				ybdb.del(*begin);
+			}
+			++begin;
+		}
 	}
-	BDB::Config conf;
-	conf.root_dir = workingDir;
-	conf.min_size = 52428800;
-	BDB::BehaviorDB ybdb(conf);
 	std::ofstream fout(logFile, std::ofstream::out | std::ofstream::app);
 	delete [] logFile;
 	YoutubeCrawler yc(ybdb, fout);
