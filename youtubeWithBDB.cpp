@@ -24,7 +24,7 @@ int main(int argc, char **argv){
 	strcpy(logFile, "rids.log");
 	int ch;
 	opterr = 0;
-	while((ch = getopt(argc, argv, "k:f:s:t:")) != -1){
+	while((ch = getopt(argc, argv, "k:f:s:t:l:")) != -1){
 		switch (ch){
 			case 'k':
 				strcpy(vidsRaw, optarg);
@@ -93,7 +93,7 @@ int main(int argc, char **argv){
 	std::set<std::string>::iterator it;
 	BDB::Config conf;
 	conf.root_dir = workingDir;
-	conf.min_size = 52428800;
+	conf.min_size = 26214400;
 	BDB::BehaviorDB ybdb(conf);
 	{
 		std::set<BDB::AddrType> inDBAddrList;
