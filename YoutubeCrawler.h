@@ -22,7 +22,7 @@ class YoutubeCrawler{
 		struct RecInfo{
 			BDB::BehaviorDB *ybdb;
 			BDB::AddrType addr;
-			size_t size;
+			long long int size;
 		};
 		
 		bool getVideoURI(std::set<std::string> &vids, std::map<std::string, std::vector<std::string> > &result);

@@ -154,7 +154,10 @@ std::set<std::string> YoutubeCrawler::getVideoFile(std::map<std::string, std::st
 			ybdb.del(it->second.addr);
 		}else{
 			uIt = result.find(it->first);
-			logRids << std::setw(11) << it->first << std::setfill('0') << std::setw(9) << std::hex << it->second.addr << getExtensionName(uIt->second) << std::endl;
+			logRids << std::setw(11) << it->first 
+				<< std::setfill('0') << std::setw(9) << std::hex << it->second.addr 
+				<< std::setfill('0') << std::setw(9) << std::hex << it->second.size 
+				<< getExtensionName(uIt->second) << std::endl;
 			logRids.flush();
 		}
 	}

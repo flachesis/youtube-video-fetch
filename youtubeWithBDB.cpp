@@ -101,9 +101,12 @@ int main(int argc, char **argv){
 		if(fin.is_open()){
 			std::string vid = "";
 			BDB::AddrType addr = 0;
+			long long int recSize;
 			std::string ext = "";
 			while(!fin.eof()){
-				fin >> std::setw(11) >> vid >> std::setw(9) >> std::hex >> addr >> ext;
+				fin >> std::setw(11) >> vid 
+					>> std::setw(9) >> std::hex >> addr 
+					>> std::setw(9) >> std::hex >> recSize >> ext;
 				if((it = vids.find(vid)) != vids.end()){
 					vids.erase(it);
 				}
