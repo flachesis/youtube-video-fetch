@@ -3,6 +3,7 @@
 #include "bdb/addr_iter.hpp"
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <iomanip>
 #include <cstdlib>
 #include <unistd.h>
@@ -93,20 +94,32 @@ int main(int argc, char **argv){
 	std::set<std::string>::iterator it;
 	BDB::Config conf;
 	conf.root_dir = workingDir;
-	conf.min_size = 26214400;
+	conf.min_size = 512 * 1024;
+	conf.log_dir = NULL;
 	BDB::BehaviorDB ybdb(conf);
 	{
 		std::set<BDB::AddrType> inDBAddrList;
 		std::ifstream fin(logFile, std::ifstream::in);
 		if(fin.is_open()){
+			std::string tmpVarString;
+			std::istringstream iss(std::istringstream::in);
 			std::string vid = "";
 			BDB::AddrType addr = 0;
 			long long int recSize;
 			std::string ext = "";
 			while(!fin.eof()){
-				fin >> std::setw(11) >> vid 
-					>> std::setw(9) >> std::hex >> addr 
-					>> std::setw(9) >> std::hex >> recSize >> ext;
+				fin >> std::setw(11) >> vid;
+				fin >> std::setw(9) >> tmpVarString;
+				iss.str(tmpVarString);
+				iss >> std::hex >> addr;
+				iss.clear();
+				tmpVarString.clear();
+				fin >> std::setw(9) >> tmpVarString;
+				iss.str(tmpVarString);
+				iss >> std::hex >> recSize;
+				iss.clear();
+				tmpVarString.clear();
+				fin >> ext;
 				if((it = vids.find(vid)) != vids.end()){
 					vids.erase(it);
 				}
