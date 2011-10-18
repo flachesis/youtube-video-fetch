@@ -11,6 +11,7 @@
 bool init();
 void uninit();
 size_t chunk_size_est(unsigned int dir, size_t min_size);
+bool capacity_test(size_t chunk_size, size_t data_size);
 
 int main(int argc, char **argv){
 	init();
@@ -98,6 +99,7 @@ int main(int argc, char **argv){
 	conf.min_size = 1024 * 1024;
 	conf.log_dir = NULL;
 	conf.addr_prefix_len = 5;
+	//conf.ct_func = &capacity_test;
 	conf.cse_func = &chunk_size_est;
 	BDB::BehaviorDB ybdb(conf);
 	{
@@ -172,6 +174,11 @@ bool init(){
 void uninit(){
 	curl_global_cleanup();
 }
+
+bool capacity_test(size_t chunk_size, size_t data_size){
+	return chunk_size >= data_size;
+}
+
 size_t chunk_size_est(unsigned int dir, size_t min_size){
 	if(dir > 1){
 		size_t a = 1;

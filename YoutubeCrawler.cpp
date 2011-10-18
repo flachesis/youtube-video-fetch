@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include <unistd.h>
 
 YoutubeCrawler::YoutubeCrawler(BDB::BehaviorDB &bdb, std::ofstream &logHandle) : ybdb(bdb), logRids(logHandle){
 	
@@ -58,15 +59,26 @@ bool YoutubeCrawler::getVideoURI(std::set<std::string> &vids, std::map<std::stri
 	curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 10);
 	curl_easy_setopt(handle, CURLOPT_TIMEOUT, 60);
 	std::vector<std::string> vURIList;
-	for(std::set<std::string>::iterator it = vids.begin(); it != vids.end(); it++){
+	for(std::set<std::string>::iterator it = vids.begin(); it != vids.end();){
 		vidURI = uriPrefix + *it;
 		curl_easy_setopt(handle, CURLOPT_URL, vidURI.c_str());
 		code = curl_easy_perform(handle);
 		if(code == 0){
 			if(getMaxQualityURI(handle, content, vURIList)){
 				result.insert(std::pair<std::string, std::vector<std::string> >(*it, vURIList));
+				it++;
+			}else{
+				if(content.find("p class='largeText'") != std::string::npos){
+					std::cerr << "server ban this computer ip. sleep 15 min..." << std::endl;
+					sleep(900);
+					std::cerr << "retry start..." << std::endl;
+				}else{
+					it++;
+				}
 			}
 			vURIList.clear();
+		}else{
+			it++;
 		}
 		content.clear();
 	}
