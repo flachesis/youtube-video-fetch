@@ -10,6 +10,7 @@
 
 bool init();
 void uninit();
+size_t chunk_size_est(unsigned int dir, size_t min_size);
 
 int main(int argc, char **argv){
 	init();
@@ -94,8 +95,10 @@ int main(int argc, char **argv){
 	std::set<std::string>::iterator it;
 	BDB::Config conf;
 	conf.root_dir = workingDir;
-	conf.min_size = 512 * 1024;
+	conf.min_size = 1024 * 1024;
 	conf.log_dir = NULL;
+	conf.addr_prefix_len = 5;
+	conf.cse_func = &chunk_size_est;
 	BDB::BehaviorDB ybdb(conf);
 	{
 		std::set<BDB::AddrType> inDBAddrList;
@@ -145,6 +148,8 @@ int main(int argc, char **argv){
 			vidsTmp.insert(*it);
 			count++;
 		}
+		vids.erase(vids.begin(), it);
+		it = vids.begin();
 		failGetVids = yc.processVideoFetch(vidsTmp);
 		for(std::set<std::string>::iterator it = failGetVids.begin(); it != failGetVids.end(); it++){
 			std::cerr << *it << " fetch fail." << std::endl;
@@ -167,3 +172,21 @@ bool init(){
 void uninit(){
 	curl_global_cleanup();
 }
+size_t chunk_size_est(unsigned int dir, size_t min_size){
+	if(dir > 1){
+		size_t a = 1;
+		size_t b = 2;
+		size_t tmp;
+		for(unsigned int i = 1; i < dir; i++){
+			tmp = b;
+			b = a + b;
+			a = tmp;
+		}
+		return b * min_size;
+	}else if(dir == 0){
+		return 1 * min_size;
+	}else{
+		return 2 * min_size;
+	}
+}
+
