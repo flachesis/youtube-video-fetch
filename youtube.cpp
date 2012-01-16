@@ -23,16 +23,19 @@ void uninit();
 std::set<std::string> processVideoFetch(std::string savePath, std::set<std::string> &vids);
 bool getVideoURI(std::set<std::string> &vids, std::map<std::string, std::vector<std::string> > &result);
 bool getMaxQualityURI(CURL *handle, std::string &content, std::vector<std::string> &results);
-std::set<std::string> getVideoFile(std::string &savePath, std::map<std::string, std::string> &result);
+std::set<std::string> getVideoFile(std::string savePath, std::map<std::string, std::string> &result);
 std::string getExtensionName(std::string &url);
 size_t writeStringCallback(char *ptr, size_t size, size_t nmemb, void *userdata);
 size_t writeFileCallback(char *ptr, size_t size, size_t nmemb, void *userdata);
 
 int main(int argc, char **argv){
 	init();
+	bool printMode = false;
+	bool directMode = false;
 	std::set<std::string> vids;
 	int threadNum = 10;
 	char *vidsRaw = new char[1200010];
+	char *rawURL = new char[1200010];
 	char *fileName = new char[4096];
 	char *workingDir = new char[4096];
 	vidsRaw[0] = '\0';
@@ -40,7 +43,7 @@ int main(int argc, char **argv){
 	workingDir[0] = '\0';
 	int ch;
 	opterr = 0;
-	while((ch = getopt(argc, argv, "k:f:s:t:")) != -1){
+	while((ch = getopt(argc, argv, "k:f:s:t:u:p")) != -1){
 		switch (ch){
 			case 'k':
 				strcpy(vidsRaw, optarg);
@@ -53,6 +56,13 @@ int main(int argc, char **argv){
 			break;
 			case 't':
 				threadNum = atoi(optarg);
+			break;
+			case 'p':
+				printMode = true;
+			break;
+			case 'u':
+				strcpy(rawURL, optarg);
+				directMode = true;
 			break;
 			default:
 			{
@@ -97,21 +107,51 @@ int main(int argc, char **argv){
 	}
 	delete [] vidsRaw;
 	delete [] fileName;
-	std::set<std::string> vidsTmp;
-	int count = 0;
-	std::set<std::string> failGetVids;
-	std::set<std::string>::iterator it = vids.begin();
-	while(it != vids.end()){
-		count = 0;
-		for(; it != vids.end() && count < threadNum; it++){
-			vidsTmp.insert(*it);
-			count++;
+	if(printMode){
+		std::map<std::string, std::vector<std::string> > result;
+		if(getVideoURI(vids, result)){
+			for(std::map<std::string, std::vector<std::string> >::iterator it = result.begin(); it != result.end(); it++){
+				std::cout << it->first << "\n";
+				for(std::vector<std::string>::iterator it2 = it->second.begin(); it2 != it->second.end(); it2++){
+					std::cout << *it2 << "\n";
+				}
+				std::cout << "\n" << std::endl;
+			}
+		}else{
+			std::cerr << "get video download link error." << std::endl;
 		}
-		failGetVids = processVideoFetch(workingDir, vidsTmp);
-		for(std::set<std::string>::iterator it = failGetVids.begin(); it != failGetVids.end(); it++){
-			std::cerr << *it << " fetch fail." << std::endl;
+		
+	}else if(directMode){
+		std::map<std::string, std::string> cdnURList;
+		std::string tmpVid;
+		std::string tmpCdnURL;
+		pch = strtok(rawURL, ",");
+		while(pch != NULL){
+			tmpVid = pch;
+			pch = strtok(NULL, ";");
+			tmpCdnURL = pch;
+			cdnURList.insert(std::pair<std::string, std::string>(tmpVid,tmpCdnURL));
+			pch = strtok(NULL, ",");
+		}
+		getVideoFile(workingDir, cdnURList);
+	}else{
+		std::set<std::string> vidsTmp;
+		int count = 0;
+		std::set<std::string> failGetVids;
+		std::set<std::string>::iterator it = vids.begin();
+		while(it != vids.end()){
+			count = 0;
+			for(; it != vids.end() && count < threadNum; it++){
+				vidsTmp.insert(*it);
+				count++;
+			}
+			failGetVids = processVideoFetch(workingDir, vidsTmp);
+			for(std::set<std::string>::iterator it = failGetVids.begin(); it != failGetVids.end(); it++){
+				std::cerr << *it << " fetch fail." << std::endl;
+			}
 		}
 	}
+	delete [] rawURL;
 	delete [] workingDir;
 	uninit();
 	return 0;
@@ -192,7 +232,7 @@ bool getVideoURI(std::set<std::string> &vids, std::map<std::string, std::vector<
 	return true;
 }
 
-std::set<std::string> getVideoFile(std::string &savePath, std::map<std::string, std::string> &result){
+std::set<std::string> getVideoFile(std::string savePath, std::map<std::string, std::string> &result){
 	std::set<std::string> unFinishVids;
 	if(result.size() == 0){
 		return unFinishVids;
